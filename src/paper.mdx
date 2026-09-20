@@ -2,7 +2,7 @@
 title: "Managing Conflicting Tasks in Heterogeneous Multi-Robot Systems Through Hierarchical Optimization"
 theme: device
 favicon: favicon.svg
-description: "A hierarchical optimization model predictive control framework that lets heterogeneous multi-robot fleets execute several conflicting tasks at once while strictly preserving their priority order. IEEE Robotics and Automation Letters, 2025."
+description: "A hierarchical optimization model predictive control framework that lets heterogeneous multi-robot fleets execute several conflicting tasks at once while strictly preserving their priority order. Published in IEEE Robotics and Automation Letters, 2025."
 thumbnail: cover_pic.png
 ---
 
@@ -13,6 +13,7 @@ import Picture from "./components/Picture.astro";
 import Video from "./components/Video.astro";
 import Wide from "./components/Wide.astro";
 import TwoColumns from "./components/TwoColumns.astro";
+import Bibtex from "./components/Bibtex.astro";
 
 import taskHierarchy from "./assets/task_hierarchy.webp";
 import toyProblem from "./assets/toy_problem_1.svg";
@@ -34,13 +35,13 @@ import realTimeFactor from "./assets/real_time_factor.svg";
     {
       name: "Davide De Benedittis",
       url: "https://ddebenedittis.github.io/",
-      institution: "University of Pisa",
-      notes: ["*"],
+      notes: ["1", "*"],
     },
-    { name: "Manolo Garabini", institution: "University of Pisa" },
-    { name: "Lucia Pallottino", institution: "University of Pisa" },
+    { name: "Manolo Garabini", notes: ["1"] },
+    { name: "Lucia Pallottino", notes: ["1"] },
   ]}
   notes={[
+    { symbol: "1", text: "Centro di Ricerca “E. Piaggio”, Università di Pisa, Pisa, Italy" },
     { symbol: "*", text: "Corresponding author: davide.debenedittis@phd.unipi.it" },
   ]}
   links={[
@@ -53,6 +54,11 @@ import realTimeFactor from "./assets/real_time_factor.svg";
       name: "Code",
       url: "https://github.com/ddebenedittis/hierarchical_optimization_mpc",
       icon: "ri:github-line",
+    },
+    {
+      name: "Cite",
+      url: "#bibtex-citation",
+      icon: "ri:double-quotes-l",
     },
   ]}
 />
@@ -252,6 +258,8 @@ Future work will explore decentralized optimization and validation under more dy
 
 ## BibTeX citation
 
+<Bibtex>
+
 ```bibtex
 @article{debenedittis2025managing,
   author  = {De Benedittis, Davide and Garabini, Manolo and Pallottino, Lucia},
@@ -264,6 +272,8 @@ Future work will explore decentralized optimization and validation under more dy
   doi     = {10.1109/LRA.2025.3559843}
 }
 ```
+
+</Bibtex>
 
 {/* TODO: the paper has no architecture block diagram, so the Approach section uses the IROS graphical-abstract priority stack instead. */}
 {/* TODO: no header teaser video — every supplementary clip is a pale white-background plot, which would make the white header text unreadable. */}
