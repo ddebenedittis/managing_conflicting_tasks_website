@@ -1,0 +1,270 @@
+---
+title: "Managing Conflicting Tasks in Heterogeneous Multi-Robot Systems Through Hierarchical Optimization"
+theme: device
+favicon: favicon.svg
+description: "A hierarchical optimization model predictive control framework that lets heterogeneous multi-robot fleets execute several conflicting tasks at once while strictly preserving their priority order. IEEE Robotics and Automation Letters, 2025."
+thumbnail: cover_pic.png
+---
+
+import Header from "./components/Header.astro";
+import HighlightedSection from "./components/HighlightedSection.astro";
+import Figure from "./components/Figure.astro";
+import Picture from "./components/Picture.astro";
+import Video from "./components/Video.astro";
+import Wide from "./components/Wide.astro";
+import TwoColumns from "./components/TwoColumns.astro";
+
+import taskHierarchy from "./assets/task_hierarchy.webp";
+import toyProblem from "./assets/toy_problem_1.svg";
+import manyTasks from "./assets/many_tasks.svg";
+import manyTasksHo from "./assets/many_tasks_ho.webm";
+import manyTasksK100 from "./assets/many_tasks_k100.webm";
+import cov6u from "./assets/cov_6u.webm";
+import cov4u2o from "./assets/cov_4u2o.webm";
+import obsFormComvel from "./assets/obs_form_comvel.webm";
+import obsComvelForm from "./assets/obs_comvel_form.webm";
+import obsFormComvelDist from "./assets/obs_form_comvel_dist.svg";
+import obsComvelFormDist from "./assets/obs_comvel_form_dist.svg";
+import realTimeFactor from "./assets/real_time_factor.svg";
+
+<Header
+  title="Managing Conflicting Tasks in Heterogeneous Multi-Robot Systems Through Hierarchical Optimization"
+  conference="IEEE Robotics and Automation Letters, 2025"
+  authors={[
+    {
+      name: "Davide De Benedittis",
+      url: "https://ddebenedittis.github.io/",
+      institution: "University of Pisa",
+      notes: ["*"],
+    },
+    { name: "Manolo Garabini", institution: "University of Pisa" },
+    { name: "Lucia Pallottino", institution: "University of Pisa" },
+  ]}
+  notes={[
+    { symbol: "*", text: "Corresponding author: davide.debenedittis@phd.unipi.it" },
+  ]}
+  links={[
+    {
+      name: "Paper",
+      url: "https://doi.org/10.1109/LRA.2025.3559843",
+      icon: "ri:file-pdf-2-line",
+    },
+    {
+      name: "Code",
+      url: "https://github.com/ddebenedittis/hierarchical_optimization_mpc",
+      icon: "ri:github-line",
+    },
+  ]}
+/>
+
+<HighlightedSection>
+
+## Abstract
+
+The robotics research community has explored several model-based techniques for multi-robot and multi-task control.
+Through constrained optimization, robot-specific characteristics can be taken into account when controlling robots and accomplishing tasks.
+However, in scenarios with multiple conflicting tasks, existing methods struggle to enforce strict prioritization among them, allowing less important tasks to interfere with more important ones.
+In this paper, we propose a novel control framework that enables robots to execute multiple prioritized tasks concurrently while maintaining a strict task priority order.
+The framework exploits hierarchical optimization within a model predictive control structure.
+It formulates a convex minimization problem in which all the tasks are encoded as linear equality and inequality constraints.
+The proposed approach is validated through simulations using a team of heterogeneous robots performing multiple tasks.
+
+</HighlightedSection>
+
+## Approach
+
+Every requirement placed on the fleet — the robots' own dynamics included — is written as a task, a set of linear equality and inequality constraints on the stacked states and inputs of all $n_\mathrm{r}$ robots:
+
+$$
+\mathcal{T}_p: \left\{ \begin{aligned}
+  A_p x - b_p &= 0, \\
+  C_p x - d_p &\leq \mu_p,
+\end{aligned} \right.
+$$
+
+where the slack variable $\mu_p$ keeps the problem feasible when a task cannot be satisfied.
+The tasks are then solved in a strict priority order: the robots' dynamics take the highest priority, the input limits follow, and the remaining tasks are ordered according to the requirements of the application.
+The priority ordering is the only thing the designer sets — no weight tuning is required.
+
+<Figure>
+  <Picture slot="figure" src={taskHierarchy} alt="A stack of task layers, from robot dynamics at the top through safety and primary tasks down to secondary tasks, solved by hierarchical quadratic programming for a heterogeneous fleet of mobile robots." />
+  <Fragment slot="caption">Tasks are arranged in a strict priority order and solved one level at a time, so that a lower-priority task can never compromise a higher-priority one.</Fragment>
+</Figure>
+
+### Hierarchical optimization
+
+Each task $\mathcal{T}_p$ is solved as a quadratic program that also carries the inequality constraints of all higher-priority tasks, giving a *partial* solution $x_p^*$.
+The *global* solution, which also satisfies the equality constraints of the higher-priority tasks, is obtained by projecting the partial solution into their null space:
+
+$$
+\bar{x}_p^* = \bar{x}_{p-1}^* + N_{p-1} x_p^*, \qquad \bar{x}_0^* = 0,
+$$
+
+with the null-space projector computed recursively from the singular value decomposition of $A_p N_{p-1}$:
+
+$$
+N_p = N_{p-1} \operatorname{Null}(A_p N_{p-1}), \qquad N_0 = I.
+$$
+
+Since $N_p$ loses columns as each task constrains the solution space, lower-priority tasks optimize over a progressively smaller space and cannot undo what a more important task has achieved.
+The solution of the whole set of tasks is $\bar{x}_m^*$, obtained after solving $m$ subproblems.
+
+### Hierarchical constraint-based model predictive control
+
+The hierarchy is embedded in a model predictive controller covering a horizon of $n_\mathrm{c} \Delta t$.
+The optimization uses direct multiple shooting, which jointly optimizes the states and the inputs of the fleet and offers better convergence than single shooting at the cost of more variables.
+Each robot's dynamics are discretized and linearized around a nominal trajectory rather than a single point, which significantly reduces linearization errors.
+Heterogeneity is handled naturally, because every robot contributes its own dynamics and its own input and input-rate limits to the same problem.
+
+## Tasks
+
+The paper formalizes a set of multi-robot tasks within the framework.
+Since several tasks may share the same priority level and be traded off by relative weights, the approach is a superset of weighted optimization.
+
+| Task | Encoding |
+| --- | --- |
+| Robot dynamics | equality, linearized and discretized per robot |
+| Input and input-rate limits | inequality, $u_{i,\min} \leq u_{i,k} \leq u_{i,\max}$ |
+| Collision avoidance | inequality, minimum safety distance $d_\mathrm{s}$ to obstacles and to other robots |
+| Go-to-goal | equality, $r_{i,k} = r_\mathrm{goal}$ |
+| Coverage | equality, $r_{i,k} = c_{\mathcal{V}_{i,k}}$, the centroid of the robot's Voronoi cell |
+| Formation control | equality on the desired inter-robot distances $d_{ij}$ |
+| Input minimization | equality, $u_{i,k} = 0$, at the lowest priority |
+
+## Results
+
+### Prioritized versus weighted optimization
+
+Two single-robot scenarios separate the proposed approach from the weighted one, where relative importance is expressed by a scalar $\kappa$ that must be tuned.
+
+In the first, a unicycle is given three conflicting go-to-goal tasks, with $\mathcal{T}_\mathrm{a}$ more important than $\mathcal{T}_\mathrm{b}$ and $\mathcal{T}_\mathrm{c}$.
+The prioritized controller satisfies $\mathcal{T}_\mathrm{a}$ without compromise while moving smoothly and within the robot's dynamics.
+The weighted controller only matches it once $\kappa$ is raised to 1000.
+
+<Figure>
+  <Picture slot="figure" src={toyProblem} alt="Trajectory of a unicycle that leaves the origin and settles on the goal of the highest-priority task, ignoring the two conflicting lower-priority goals." />
+  <Fragment slot="caption">Conflicting go-to-goal tasks solved with the proposed approach. $\mathcal{T}_\mathrm{a}$ has the highest priority, followed by $\mathcal{T}_\mathrm{b}$ and $\mathcal{T}_\mathrm{c}$.</Fragment>
+</Figure>
+
+| Method | Weight $\kappa$ | Time-to-goal | Position error |
+| --- | --- | --- | --- |
+| **Prioritized** | — | **4.05 s** | **0.00 m** |
+| Weighted | 10 | 4.09 s | 0.62 m |
+| Weighted | 100 | 4.05 s | 0.01 m |
+| Weighted | 1000 | 4.05 s | 0.00 m |
+
+In the second scenario the same robot is given five partially conflicting tasks of decreasing importance — $\mathcal{T}_1: x = 5$, $\mathcal{T}_2: x = -12$, $\mathcal{T}_3: y = 10$, $\mathcal{T}_4: y = -4$, and $\mathcal{T}_5: \theta = \pi/4$ — whose optimal final configuration is $x = 5$, $y = 10$, $\theta = \pi/4$.
+The prioritized controller reaches it without tuning: it first moves horizontally to satisfy $\mathcal{T}_1$ with minimal delay, only then moves vertically to complete $\mathcal{T}_3$, and finally rotates to accomplish $\mathcal{T}_5$.
+No weight value reproduces that behaviour.
+With $\kappa = 100$ the robot completes a single task even though the others are non-conflicting, with $\kappa = 5$ it accomplishes none, and the best intermediate value leaves feasible tasks uncompleted.
+
+<Figure>
+  <Picture slot="figure" src={manyTasks} alt="Paths followed by the robot: the prioritized controller reaches the optimal configuration in three stages, while the weighted controller ends elsewhere for every value of the weight." />
+  <Fragment slot="caption">Path executed by the robot with the prioritized and the weighted approach.</Fragment>
+</Figure>
+
+<TwoColumns>
+  <Figure slot="left">
+    <Video slot="figure" src={manyTasksHo} />
+    <Fragment slot="caption">Prioritized approach: the tasks are completed in priority order.</Fragment>
+  </Figure>
+  <Figure slot="right">
+    <Video slot="figure" src={manyTasksK100} />
+    <Fragment slot="caption">Weighted approach, $\kappa = 100$: only one task is completed.</Fragment>
+  </Figure>
+</TwoColumns>
+
+### Coverage and battery charging
+
+A fleet of six mobile robots must cover a square area while each robot keeps a sufficient battery charge, recharged by reaching a charging station.
+Coverage is prioritized while the battery is full; below a threshold, recharging is assigned a higher priority for that robot.
+The remaining robots keep covering the area and adapt to the movement of the one that leaves.
+The scenario is run with six unicycles and repeated with a heterogeneous fleet of four unicycles and two omnidirectional robots, which the framework manages by carrying each robot's dynamics and constraints in the same optimization problem.
+
+<TwoColumns>
+  <Figure slot="left">
+    <Video slot="figure" src={cov6u} />
+    <Fragment slot="caption">Six unicycle robots covering the area, two of which leave to recharge.</Fragment>
+  </Figure>
+  <Figure slot="right">
+    <Video slot="figure" src={cov4u2o} />
+    <Fragment slot="caption">The same scenario with four unicycles and two omnidirectional robots.</Fragment>
+  </Figure>
+</TwoColumns>
+
+### Collision avoidance, formation control, and centroid velocity
+
+Five omnidirectional robots must hold a formation and follow a centroid velocity reference while avoiding an obstacle and each other, keeping at least 50 cm between robots.
+Collision avoidance always has the highest priority; swapping the order of the other two tasks decides which one is sacrificed.
+With formation control above the velocity reference, the formation is preserved through the evasive manoeuvre and the centroid velocity error peaks at 0.7 m/s.
+With the order reversed, the velocity error stays at 0 m/s at all times and the formation is temporarily broken instead.
+
+<TwoColumns>
+  <Figure slot="left">
+    <Video slot="figure" src={obsFormComvel} />
+    <Fragment slot="caption">Formation control above the centroid velocity reference.</Fragment>
+  </Figure>
+  <Figure slot="right">
+    <Video slot="figure" src={obsComvelForm} />
+    <Fragment slot="caption">Centroid velocity reference above formation control.</Fragment>
+  </Figure>
+</TwoColumns>
+
+<TwoColumns>
+  <Figure slot="left">
+    <Picture slot="figure" src={obsFormComvelDist} alt="Inter-robot distances over time, all of them above the safety threshold, when formation control is prioritized." />
+    <Fragment slot="caption">Inter-robot distances with formation control prioritized.</Fragment>
+  </Figure>
+  <Figure slot="right">
+    <Picture slot="figure" src={obsComvelFormDist} alt="Inter-robot distances over time, all of them above the safety threshold, when the centroid velocity reference is prioritized." />
+    <Fragment slot="caption">Inter-robot distances with the velocity reference prioritized.</Fragment>
+  </Figure>
+</TwoColumns>
+
+In both cases the safety distance is never violated: the highest-priority task is achieved without compromise, and prioritization is enforced by null-space projection rather than by weights that would have to be tuned against safety.
+
+### Computation time
+
+The framework is implemented in Python 3.10, with the tasks defined and linearized through CasADi and solved with `quadprog`, on a 12th Gen Intel Core i7-12700H.
+The weighted approach solves one large problem, the hierarchical one solves $m$ smaller subproblems, so which is faster depends on how the inequality constraints are distributed.
+The weighted approach is roughly four times faster in the two single-robot scenarios and 50% faster on coverage, whereas the hierarchical approach is 40% faster on the collision-avoidance-heavy scenario, where its subproblems are considerably smaller.
+
+| Scenario | Setup time | Solve time, hierarchical | Solve time, weighted |
+| --- | --- | --- | --- |
+| Conflicting go-to-goal | 0.106 s | 0.121 s | 0.031 s |
+| Multiple prioritized tasks | 0.102 s | 0.174 s | 0.056 s |
+| Coverage | 1.6 s | 4.19 s | 2.72 s |
+| Collision avoidance, centroid velocity, and formation | 0.45 s | 0.74 s | 1.05 s |
+
+The computational cost scales linearly with the prediction horizon $n_\mathrm{c}$ and quadratically with the number of robots $n_\mathrm{r}$.
+At a control frequency of 20 Hz, the approach remains real-time capable with fleets of more than 40 robots for short prediction horizons.
+
+<Figure>
+  <Picture slot="figure" src={realTimeFactor} alt="Real-time factor against the number of robots for prediction horizons of one to four steps, crossing the real-time threshold beyond forty robots for the shortest horizon." />
+  <Fragment slot="caption">Real-time factor when varying the number of robots $n_\mathrm{r}$ and the prediction horizon $n_\mathrm{c}$.</Fragment>
+</Figure>
+
+## Conclusion
+
+By leveraging hierarchical optimization within a model predictive control structure, the proposed method handles task prioritization efficiently, ensuring strict task ordering and execution while simultaneously accounting for the robots' dynamics and constraints.
+The framework maintains task priority without the extensive parameter tuning that weighted approaches require, suits heterogeneous robot systems and complex environments, and manages concurrent tasks such as collision avoidance, coverage, formation control, and battery charging.
+Future work will explore decentralized optimization and validation under more dynamic conditions.
+
+## BibTeX citation
+
+```bibtex
+@article{debenedittis2025managing,
+  author  = {De Benedittis, Davide and Garabini, Manolo and Pallottino, Lucia},
+  journal = {IEEE Robotics and Automation Letters},
+  title   = {Managing Conflicting Tasks in Heterogeneous Multi-Robot Systems Through Hierarchical Optimization},
+  year    = {2025},
+  volume  = {10},
+  number  = {6},
+  pages   = {5305--5312},
+  doi     = {10.1109/LRA.2025.3559843}
+}
+```
+
+{/* TODO: the paper has no architecture block diagram, so the Approach section uses the IROS graphical-abstract priority stack instead. */}
+{/* TODO: no header teaser video — every supplementary clip is a pale white-background plot, which would make the white header text unreadable. */}
+{/* TODO: Related Works is deliberately omitted; it belongs in the PDF, not on a project page. */}
